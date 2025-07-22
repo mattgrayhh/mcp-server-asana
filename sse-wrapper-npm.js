@@ -16,6 +16,8 @@ const mcpEvents = new EventEmitter();
 let mcpProcess = null;
 let requestIdCounter = 1;
 const pendingRequests = new Map();
+let tools = [];
+let initialized = false;
 
 // Start MCP server
 function startMCPServer() {
@@ -40,6 +42,11 @@ function startMCPServer() {
     try {
       const message = JSON.parse(line);
       console.log('MCP Response:', JSON.stringify(message, null, 2));
+      
+      // Store tools when received
+      if (message.result && message.result.tools) {
+        tools = message.result.tools;
+      }
       
       // Handle response to specific request
       if (message.id && pendingRequests.has(message.id)) {
@@ -66,22 +73,45 @@ function startMCPServer() {
     setTimeout(startMCPServer, 5000);
   });
 
-  // Send initialization
-  setTimeout(() => {
-    sendMCPRequest({
+  // Initialize after starting
+  setTimeout(async () => {
+    await initializeMCP();
+  }, 2000);
+}
+
+// Initialize MCP connection
+async function initializeMCP() {
+  if (!initialized) {
+    // Send initialization
+    await sendMCPRequest({
       jsonrpc: '2.0',
       method: 'initialize',
       params: {
         protocolVersion: '2024-11-05',
-        capabilities: {},
+        capabilities: {
+          tools: {}
+        },
         clientInfo: {
-          name: 'sse-wrapper',
+          name: 'n8n-mcp-client',
           version: '1.0.0'
         }
       },
       id: 'init-1'
     });
-  }, 1000);
+    
+    // Wait a bit
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Request tools list
+    await sendMCPRequest({
+      jsonrpc: '2.0',
+      method: 'tools/list',
+      params: {},
+      id: 'tools-1'
+    });
+    
+    initialized = true;
+  }
 }
 
 // Send request to MCP server
@@ -107,7 +137,7 @@ function sendMCPRequest(request) {
   });
 }
 
-// SSE endpoint
+// SSE endpoint - matching HubSpot's format
 app.get('/sse', (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -116,8 +146,34 @@ app.get('/sse', (req, res) => {
     'X-Accel-Buffering': 'no'
   });
 
-  // Send initial connection message
-  res.write(`data: ${JSON.stringify({ type: 'connected' })}\n\n`);
+  // Send initial MCP protocol message (like HubSpot)
+  const initialMessage = {
+    jsonrpc: '2.0',
+    method: 'initialized',
+    params: {
+      protocolVersion: '2024-11-05',
+      serverInfo: {
+        name: 'asana-mcp-server',
+        version: '1.0.0'
+      },
+      capabilities: {
+        tools: {}
+      }
+    }
+  };
+  res.write(`data: ${JSON.stringify(initialMessage)}\n\n`);
+  
+  // Send tools if available (like HubSpot)
+  if (tools.length > 0) {
+    const toolsMessage = {
+      jsonrpc: '2.0',
+      result: {
+        tools: tools
+      },
+      id: 'tools-1'
+    };
+    res.write(`data: ${JSON.stringify(toolsMessage)}\n\n`);
+  }
 
   // Listen for MCP messages
   const messageHandler = (message) => {
@@ -140,12 +196,28 @@ app.get('/sse', (req, res) => {
 
 // List available tools
 app.get('/tools', async (req, res) => {
-  try {
+  if (tools.length === 0) {
+    // Try to get tools
     const response = await sendMCPRequest({
       jsonrpc: '2.0',
       method: 'tools/list',
       params: {}
     });
+    if (response.result && response.result.tools) {
+      tools = response.result.tools;
+    }
+  }
+  res.json({ 
+    tools: tools,
+    jsonrpc: "2.0",
+    id: "tools-list"
+  });
+});
+
+// Handle MCP requests from n8n - THIS WAS MISSING!
+app.post('/mcp/request', async (req, res) => {
+  try {
+    const response = await sendMCPRequest(req.body);
     res.json(response);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -202,7 +274,9 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
     mcp_running: mcpProcess !== null && !mcpProcess.killed,
-    asana_token_configured: !!process.env.ASANA_ACCESS_TOKEN
+    asana_token_configured: !!process.env.ASANA_ACCESS_TOKEN,
+    initialized: initialized,
+    tools_count: tools.length
   });
 });
 
