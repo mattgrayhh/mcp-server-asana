@@ -146,3 +146,79 @@ app.get('/tools', async (req, res) => {
     const response = await sendMCPRequest({
       jsonrpc: '2.0',
       method: 'tools/list',
+      params: {}
+    });
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Call a tool
+app.post('/tools/:toolName', async (req, res) => {
+  try {
+    const { toolName } = req.params;
+    const response = await sendMCPRequest({
+      jsonrpc: '2.0',
+      method: 'tools/call',
+      params: {
+        name: toolName,
+        arguments: req.body
+      }
+    });
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// n8n webhook endpoint
+app.post('/webhook/asana/:action', async (req, res) => {
+  try {
+    const { action } = req.params;
+    
+    // Map n8n actions to Asana MCP tools
+    const toolName = `asana_${action}`;
+    
+    const response = await sendMCPRequest({
+      jsonrpc: '2.0',
+      method: 'tools/call',
+      params: {
+        name: toolName,
+        arguments: req.body
+      }
+    });
+    
+    if (response.error) {
+      res.status(400).json(response.error);
+    } else {
+      res.json(response.result);
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    mcp_running: mcpProcess !== null && !mcpProcess.killed,
+    asana_token_configured: !!process.env.ASANA_ACCESS_TOKEN
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`SSE wrapper listening on port ${PORT}`);
+  startMCPServer();
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  if (mcpProcess) {
+    mcpProcess.kill();
+  }
+  process.exit(0);
+});
+EOF
