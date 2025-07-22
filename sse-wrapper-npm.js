@@ -81,37 +81,51 @@ function startMCPServer() {
 
 // Initialize MCP connection
 async function initializeMCP() {
-  if (!initialized) {
-    // Send initialization
-    await sendMCPRequest({
-      jsonrpc: '2.0',
-      method: 'initialize',
-      params: {
-        protocolVersion: '2024-11-05',
-        capabilities: {
-          tools: {}
-        },
-        clientInfo: {
-          name: 'n8n-mcp-client',
-          version: '1.0.0'
-        }
-      },
-      id: 'init-1'
-    });
-    
-    // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Request tools list
-    await sendMCPRequest({
-      jsonrpc: '2.0',
-      method: 'tools/list',
-      params: {},
-      id: 'tools-1'
-    });
-    
-    initialized = true;
+  if (initialized) {
+    return;
   }
+
+  // Send initialization
+  const initResponse = await sendMCPRequest({
+    jsonrpc: '2.0',
+    method: 'initialize',
+    params: {
+      protocolVersion: '2024-11-05',
+      capabilities: {
+        tools: {}
+      },
+      clientInfo: {
+        name: 'n8n-mcp-client',
+        version: '1.0.0'
+      }
+    },
+    id: 'init-1'
+  });
+
+  if (initResponse.error) {
+    console.error('Error during initialize:', initResponse.error);
+    setTimeout(initializeMCP, 2000);
+    return;
+  }
+
+  // Wait a bit
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  // Request tools list
+  const toolsResponse = await sendMCPRequest({
+    jsonrpc: '2.0',
+    method: 'tools/list',
+    params: {},
+    id: 'tools-1'
+  });
+
+  if (toolsResponse.error) {
+    console.error('Error during tools/list:', toolsResponse.error);
+    setTimeout(initializeMCP, 2000);
+    return;
+  }
+
+  initialized = true;
 }
 
 // Send request to MCP server
