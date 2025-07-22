@@ -13,20 +13,28 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies
+# Install dependencies (including dev dependencies for build)
 RUN npm ci
 
 # Copy source code
 COPY . .
 
-# Build the TypeScript project
-RUN npm run build
+# Build the TypeScript project using npm scripts
+RUN npm run build || \
+    (npm install -g typescript esbuild && \
+     npx esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js --format=cjs)
+
+# Install production dependencies only
+RUN npm ci --production
 
 # Install SSE wrapper dependencies
 RUN npm install express cors
 
 # Copy SSE wrapper
 COPY sse-wrapper.js .
+
+# Make the built file executable
+RUN chmod +x dist/index.js
 
 # Expose port
 EXPOSE 8000
