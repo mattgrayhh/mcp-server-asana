@@ -10,7 +10,7 @@ RUN echo '{"name":"asana-mcp-sse","version":"1.0.0","type":"commonjs"}' > packag
 RUN npm install @roychri/mcp-server-asana@latest express cors
 
 # Copy SSE wrapper
-COPY sse-wrapper.js .
+COPY sse-wrapper-npm.js ./sse-wrapper.js
 
 # Create a wrapper script to run the installed package
 RUN echo '#!/usr/bin/env node\nrequire("@roychri/mcp-server-asana/dist/index.js");' > run-mcp.js && \
