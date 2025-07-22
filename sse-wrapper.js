@@ -21,8 +21,8 @@ const pendingRequests = new Map();
 function startMCPServer() {
   console.log('Starting Asana MCP server...');
   
-  // Spawn the MCP server
-  mcpProcess = spawn('node', ['dist/index.js'], {
+  // Use npx to run the installed package
+  mcpProcess = spawn('npx', ['@roychri/mcp-server-asana'], {
     env: {
       ...process.env,
       ASANA_ACCESS_TOKEN: process.env.ASANA_ACCESS_TOKEN
