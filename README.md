@@ -342,6 +342,60 @@ You can find the current beta release, if any, with either:
 1. https://www.npmjs.com/package/@roychri/mcp-server-asana?activeTab=versions
 2. `npm dist-tag ls @roychri/mcp-server-asana`
 
+## SSE Wrapper
+
+An optional Express wrapper (`sse-wrapper.js`) exposes the MCP server over REST
+and Server-Sent Events. It requires the same `ASANA_ACCESS_TOKEN` environment
+variable as the main server.
+
+### Endpoints
+
+- `/sse` - Streaming endpoint that emits MCP messages.
+- `/mcp/request` - Send raw MCP JSON-RPC requests.
+- `/tools` - Retrieve available tools or call one via `POST /tools/:name`.
+- `/health` - Basic status check.
+
+### Example
+
+A minimal n8n workflow is provided in [`n8n-example.json`](n8n-example.json).
+It connects to `/sse` to receive streaming responses:
+
+```json
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "=https://your-asana-mcp.up.railway.app/sse",
+          "responseFormat": "string",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "stream"
+              }
+            }
+          },
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Accept",
+                "value": "text/event-stream"
+              }
+            ]
+          }
+        },
+        "id": "sse-stream",
+        "name": "SSE Stream",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 3,
+        "position": [450, 450]
+      }
+```
+
+You can also test the stream directly with `curl`:
+
+```bash
+curl -N -H "Accept: text/event-stream" https://your-asana-mcp.up.railway.app/sse
+```
+
 ## Troubleshooting
 
 If you encounter permission errors:
