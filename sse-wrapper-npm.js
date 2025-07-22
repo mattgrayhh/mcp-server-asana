@@ -1,5 +1,3 @@
-# In your terminal, in the repository root:
-cat > sse-wrapper-npm.js << 'EOF'
 const express = require('express');
 const cors = require('cors');
 const { spawn } = require('child_process');
@@ -221,4 +219,3 @@ process.on('SIGTERM', () => {
   }
   process.exit(0);
 });
-EOF
