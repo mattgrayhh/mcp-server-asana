@@ -1,4 +1,3 @@
-cat > Dockerfile.npm << 'EOF'
 # Use Node.js LTS
 FROM node:20-slim
 
@@ -29,4 +28,3 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Run SSE wrapper
 CMD ["node", "sse-wrapper.js"]
-EOF
