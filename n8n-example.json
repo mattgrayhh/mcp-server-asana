@@ -1,0 +1,87 @@
+{
+  "name": "Asana MCP Integration Example",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://your-asana-mcp.up.railway.app/webhook/asana/create_task",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "project_id",
+              "value": "YOUR_PROJECT_ID"
+            },
+            {
+              "name": "name",
+              "value": "Task created from n8n"
+            },
+            {
+              "name": "notes",
+              "value": "This task was created via n8n using the Asana MCP server"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create-task",
+      "name": "Create Asana Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://your-asana-mcp.up.railway.app/sse",
+        "responseFormat": "string",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "stream"
+            }
+          }
+        },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "text/event-stream"
+            }
+          ]
+        }
+      },
+      "id": "sse-stream",
+      "name": "SSE Stream",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 450]
+    }
+  ],
+  "connections": {
+    "manual-trigger": {
+      "main": [
+        [
+          {
+            "node": "create-task",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "sse-stream",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
