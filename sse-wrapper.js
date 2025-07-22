@@ -22,7 +22,7 @@ function startMCPServer() {
   console.log('Starting Asana MCP server...');
   
   // Spawn the MCP server
-  mcpProcess = spawn('node', ['build/index.js'], {
+  mcpProcess = spawn('node', ['dist/index.js'], {
     env: {
       ...process.env,
       ASANA_ACCESS_TOKEN: process.env.ASANA_ACCESS_TOKEN
