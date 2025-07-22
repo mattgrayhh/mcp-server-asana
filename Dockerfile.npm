@@ -1,0 +1,30 @@
+# Use Node.js LTS
+FROM node:20-slim
+
+WORKDIR /app
+
+# Create package.json for the wrapper
+RUN echo '{"name":"asana-mcp-sse","version":"1.0.0","type":"commonjs"}' > package.json
+
+# Install the published MCP server and dependencies
+RUN npm install @roychri/mcp-server-asana@latest express cors
+
+# Copy SSE wrapper
+COPY sse-wrapper.js .
+
+# Create a wrapper script to run the installed package
+RUN echo '#!/usr/bin/env node\nrequire("@roychri/mcp-server-asana/dist/index.js");' > run-mcp.js && \
+    chmod +x run-mcp.js
+
+# Expose port
+EXPOSE 8000
+
+# Set environment variables
+ENV NODE_ENV=production
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"
+
+# Run SSE wrapper
+CMD ["node", "sse-wrapper.js"]
